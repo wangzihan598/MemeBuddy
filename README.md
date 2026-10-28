@@ -64,7 +64,7 @@ python memebuddy.py render base.png --text "这班是一秒都上不下去了" -
 ```
 memebuddy/
 ├── README.md          本文件
-├── SKILL.md           技能入口说明（与用户级 Skill 同步）
+├── SKILL.md           技能入口说明（仓库版路径已泛化，本机安装时替换为实际路径）
 ├── memebuddy.py       核心引擎（创意生成 + 中文渲染）
 ├── requirements.txt   依赖声明（仅 Pillow）
 ├── templates/
@@ -85,7 +85,7 @@ memebuddy/
 | 中文配文渲染 | ✅ 已实现，Pillow + 微软雅黑，测试通过 |
 | AI 生成底图 | ✅ 已实测可用（WorkBuddy 内置 ImageGen，消耗平台积分约 5-10/张）；积分不足或未接通时可退化为本地占位底图继续渲染 |
 | 迭代修改（改字/换画风/保留构图） | ✅ 已实现（重跑对应命令） |
-| 开源发布 | 📋 代码结构已就绪（MIT LICENSE、.gitignore），发布需作者确认 |
+| 开源发布 | ✅ 已发布：[github.com/wangzihan598/MemeBuddy](https://github.com/wangzihan598/MemeBuddy)（MIT） |
 
 扩展方式：往 `templates/moods.json` 里加情绪条目或画风条目即可，无需改代码。
 
