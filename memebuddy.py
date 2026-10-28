@@ -139,13 +139,14 @@ def _wrap_line(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[
 
 def render_caption(image_path: str | Path, text: str, out_path: str | Path,
                    position: str = "bottom", band: bool = False,
-                   margin_ratio: float = 0.05) -> Path:
+                   margin_ratio: float = 0.05, font_scale: float = 1.0) -> Path:
     """把配文渲染到底图上。
 
     - 多行用 | 分隔（如 "上半句|下半句"）
     - 白字黑描边（经典表情包样式），自动缩放字号避免溢出
     - position: top / bottom / center
     - band: 在文字区加半透明黑底条，提高可读性
+    - font_scale: 字号缩放系数（1.0 为默认大字，0.5-0.7 适合人像照片避让脸部）
     """
     src = Image.open(image_path).convert("RGB")
     W, H = src.size
@@ -156,8 +157,8 @@ def render_caption(image_path: str | Path, text: str, out_path: str | Path,
         raise ValueError("配文为空")
 
     max_width = int(W * (1 - 2 * margin_ratio))
-    # 从大到小尝试字号，直到整块文字放得下
-    for size in range(max(18, W // 8), 11, -2):
+    # 从大到小尝试字号，直到整块文字放得下；font_scale 可整体缩小避让画面主体
+    for size in range(max(18, int(W // 8 * font_scale)), 11, -2):
         font = pick_font(size)
         stroke = max(2, size // 14)
         wrapped: list[str] = []
@@ -228,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--out", required=True, help="输出图片路径")
     pr.add_argument("--position", default="bottom", choices=["top", "bottom", "center"])
     pr.add_argument("--band", action="store_true", help="文字区加半透明黑底条")
+    pr.add_argument("--font-scale", type=float, default=1.0,
+                    help="字号缩放系数（默认 1.0；人像照片建议 0.5-0.7 避让脸部）")
 
     args = p.parse_args(argv)
 
@@ -246,7 +249,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "render":
         out = render_caption(args.image, args.text, args.out,
-                             position=args.position, band=args.band)
+                             position=args.position, band=args.band,
+                             font_scale=args.font_scale)
         print(f"已生成: {out}")
         return 0
     return 1
