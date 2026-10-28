@@ -1,0 +1,3 @@
+# MemeBuddy 运行依赖（Python 3.10+）
+# 安装: python -m pip install -r requirements.txt
+Pillow>=10.0

@@ -1,0 +1,20 @@
+# 生成物：成品图片与创意记录不入库
+output/
+!output/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 密钥与个人数据
+*.key
+*.pem
+.env
+secrets*
+
+# 临时文件
+*.tmp
+.DS_Store
+Thumbs.db
