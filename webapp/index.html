@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
 <title>MemeBuddy · 中文表情包生成器 — 1024 造物挑战参赛作品</title>
 <style>
   :root {
@@ -168,7 +169,9 @@ const ctx = cv.getContext("2d");
 function loadBase(src, tag) {
   const im = new Image();
   im.onload = () => { currentImg = im; customName = tag; render(); };
-  im.src = src + "?v=" + Date.now();
+  im.onerror = () => console.error("底图加载失败: " + tag);
+  // data URI 不允许拼接 query 参数（会破坏解析），仅对 URL 底图做缓存穿透
+  im.src = src.startsWith("data:") ? src : src + "?v=" + Date.now();
 }
 
 // ---------- 渲染（移植自 memebuddy.py render_caption） ----------
