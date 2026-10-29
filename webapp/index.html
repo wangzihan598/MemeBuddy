@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemeBuddy · 中文表情包生成器 — 1024 造物挑战参赛作品</title>
+<style>
+  :root {
+    --bg: #fdf8f2; --card: #ffffff; --ink: #2d2a26; --sub: #7a736a;
+    --accent: #ff7a45; --accent2: #ffb88c; --line: #f0e6da; --ok: #2f9e6e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.6; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 60px; }
+  header { text-align: center; padding: 28px 0 8px; }
+  header h1 { font-size: 2rem; letter-spacing: 1px; }
+  header h1 .hl { color: var(--accent); }
+  header p.sub { color: var(--sub); margin-top: 6px; }
+  .badges { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .badge { background: #fff; border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: .85rem; color: var(--sub); }
+  .badge.hot { border-color: var(--accent2); color: var(--accent); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; margin-top: 24px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 18px; box-shadow: 0 3px 0 var(--line); }
+  .card h2 { font-size: 1.05rem; margin-bottom: 12px; }
+  .card h2 .step { display: inline-block; background: var(--accent); color: #fff; border-radius: 8px; width: 24px; height: 24px; text-align: center; line-height: 24px; font-size: .85rem; margin-right: 8px; }
+  .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .thumb { border: 2px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1; background: #f6f0e8; position: relative; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent2); }
+  .thumb .tag { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.55); color: #fff; font-size: .7rem; border-radius: 6px; padding: 1px 6px; }
+  .upload { margin-top: 10px; }
+  .upload label { display: block; text-align: center; border: 2px dashed var(--accent2); border-radius: 10px; padding: 10px; color: var(--accent); cursor: pointer; font-size: .9rem; }
+  .upload input { display: none; }
+  textarea { width: 100%; min-height: 84px; border: 2px solid var(--line); border-radius: 10px; padding: 10px; font-size: 1rem; font-family: inherit; resize: vertical; }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .row label { font-size: .9rem; color: var(--sub); }
+  select, input[type=range] { accent-color: var(--accent); }
+  select { border: 2px solid var(--line); border-radius: 8px; padding: 5px 8px; font-family: inherit; background: #fff; }
+  .btn { border: none; border-radius: 12px; padding: 11px 18px; font-size: 1rem; font-family: inherit; cursor: pointer; font-weight: 600; }
+  .btn.primary { background: var(--accent); color: #fff; box-shadow: 0 3px 0 #d95f2b; }
+  .btn.primary:active { transform: translateY(2px); box-shadow: none; }
+  .btn.ghost { background: #fff; border: 2px solid var(--accent2); color: var(--accent); }
+  .btn.full { width: 100%; margin-top: 14px; }
+  .hint { font-size: .8rem; color: var(--sub); margin-top: 8px; }
+  .canvasBox { text-align: center; }
+  canvas { max-width: 100%; border-radius: 12px; border: 2px solid var(--line); }
+  .scaleVal { color: var(--accent); font-weight: 600; }
+  section.info { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .info .card h3 { margin-bottom: 8px; font-size: 1rem; }
+  .info .card p, .info .card li { font-size: .9rem; color: var(--sub); }
+  .info ul { padding-left: 18px; }
+  footer { text-align: center; color: var(--sub); font-size: .85rem; margin-top: 36px; }
+  footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .topics { font-size: .85rem; color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🐱 MemeBuddy <span class="hl">· 中文表情包生成器</span></h1>
+    <p class="sub">输入一句话，三步生成中文清晰、不乱码的表情包——本地描边字渲染，AI 只负责画画面</p>
+    <div class="badges">
+      <span class="badge hot">🏆 WorkBuddy「1024 造物挑战」参赛作品</span>
+      <span class="badge">#WorkBuddy #1024程序员节</span>
+      <span class="badge">核心引擎开源（MIT）</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2><span class="step">1</span>选底图</h2>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="upload">
+        <label for="file">📷 或上传自己的照片（仅在你的浏览器本地处理，不会上传）</label>
+        <input type="file" id="file" accept="image/*">
+      </div>
+
+      <h2 style="margin-top:18px"><span class="step">2</span>写配文（每行一句）</h2>
+      <textarea id="caption" placeholder="例如：&#10;已读不回，&#10;是成年人最后的体面">已读不回，
+是成年人最后的体面</textarea>
+      <div class="row">
+        <button class="btn ghost" id="inspire">🎲 配文灵感</button>
+        <span class="hint">点击随机换一条内置梗文案</span>
+      </div>
+
+      <h2 style="margin-top:18px"><span class="step">3</span>调样式</h2>
+      <div class="row">
+        <label>文字位置</label>
+        <select id="position">
+          <option value="bottom" selected>底部</option>
+          <option value="top">顶部</option>
+          <option value="center">居中</option>
+        </select>
+        <label>字号 <span class="scaleVal" id="scaleVal">62%</span></label>
+        <input type="range" id="scale" min="35" max="120" value="62" style="flex:1">
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="band"> 加半透明黑底条（背景花时更清晰）</label>
+      </div>
+
+      <button class="btn primary full" id="download">⬇️ 下载表情包 PNG</button>
+      <p class="hint">提示：人像照片建议字号 50%–70%，避免遮脸。渲染逻辑与开源核心 memebuddy.py 完全一致。</p>
+    </div>
+
+    <div class="card canvasBox">
+      <h2 style="text-align:left">实时预览</h2>
+      <canvas id="cv"></canvas>
+    </div>
+  </div>
+
+  <section class="info">
+    <div class="card">
+      <h3>🧠 为什么中文不乱码？</h3>
+      <p>主流图像生成模型画中文字极易出错别字和乱码。MemeBuddy 采用「两段式」架构：AI（WorkBuddy ImageGen）只生成<b>不含文字</b>的画面，配文由本地/浏览器字体引擎精确渲染——中文清晰度是架构保证的，不靠运气。</p>
+    </div>
+    <div class="card">
+      <h3>🛠 完整版能做什么？</h3>
+      <ul>
+        <li>意图识别：内置 8 类情绪库（摸鱼/已读不回/震惊/无语/鼓励/反讽/职场/通用）</li>
+        <li>创意生成：每个输入产出多个方案，含画面构想 + 配文 + 适用场景</li>
+        <li>迭代修改：换配文不重画、换画风（5 种风格库）、保留构图</li>
+        <li>在 WorkBuddy 对话说「帮我做个表情包：xxx」即可调用</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📦 开源与边界（如实说明）</h3>
+      <ul>
+        <li>核心引擎 Python + Pillow，MIT 协议开源</li>
+        <li>AI 画图依赖 WorkBuddy ImageGen，按次消耗积分</li>
+        <li>本页所有底图由该流水线实际生成；上传照片仅本地处理</li>
+        <li>情绪/画风库改 JSON 即可扩展，无需改代码</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p class="topics">#WorkBuddy #1024程序员节 · 「1024 造物挑战」程序员节应用创作大赛参赛作品</p>
+    <p style="margin-top:6px">GitHub 开源仓库：<a href="https://github.com/wangzihan598/MemeBuddy" target="_blank">wangzihan598/MemeBuddy</a> · 用 WorkBuddy 从想法到可用版本，全程对话式开发</p>
+  </footer>
+</div>
+
+<script>
+// ---------- 内置配文灵感库（与 templates/moods.json 同源精简） ----------
+const MOODS = [
+  ["已读不回，是成年人最后的体面", "对方正在输入……并没有", "秒回的人不一定爱你，但已读不回的人一定看到了"],
+  ["打工人的命也是命", "只要我摸得够慢，KPI 就追不上我", "身体已经到工位，灵魂还在被窝里"],
+  ["我直接一个震惊住", "这瓜保熟吗", "信息量过大，处理器过热"],
+  ["行吧，你赢了", "有些事，看破不说破", "无语子，真的无语子"],
+  ["再坚持一下，胜利就在前方", "别怕，有我陪你冲", "今天也要元气满满哦"],
+  ["就这？就这？", "您可真是个人才", "不愧是你，我直呼内行"],
+  ["收到，好的，马上办（微笑）", "领导画饼，我先干为敬", "职场的尽头是表情包"],
+  ["懂的都懂", "温馨提示：注意休息（意味深）", "关于这件事，我是有一些发言权的"]
+];
+
+// ---------- 底图 ----------
+const BASES = [
+  { src: "assets/cat_desk.png",    tag: "摸鱼橘猫" },
+  { src: "assets/rabbit_phone.png",tag: "等回复兔子" },
+  { src: "assets/panda_worker.png",tag: "打工人熊猫" },
+  { src: "assets/pixel_dev.png",   tag: "像素程序员" },
+  { src: "assets/placeholder.png", tag: "纯色占位" }
+];
+let currentImg = null, customName = null;
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+function loadBase(src, tag) {
+  const im = new Image();
+  im.onload = () => { currentImg = im; customName = tag; render(); };
+  im.src = src + "?v=" + Date.now();
+}
+
+// ---------- 渲染（移植自 memebuddy.py render_caption） ----------
+function wrapLine(text, font, maxW) {
+  const lines = []; let buf = "", w = 0;
+  for (const ch of text) {
+    const cw = ctx.measureText(ch).width;
+    if (w + cw > maxW && buf) { lines.push(buf); buf = ""; w = 0; }
+    buf += ch; w += cw;
+  }
+  if (buf) lines.push(buf);
+  return lines.length ? lines : [""];
+}
+
+function render() {
+  if (!currentImg) return;
+  const W = currentImg.naturalWidth, H = currentImg.naturalHeight;
+  cv.width = W; cv.height = H;
+  ctx.drawImage(currentImg, 0, 0);
+
+  const raw = document.getElementById("caption").value
+    .split("\n").map(s => s.trim()).filter(Boolean);
+  if (!raw.length) { drawWatermark(); return; }
+
+  const scale = document.getElementById("scale").value / 100;
+  const position = document.getElementById("position").value;
+  const band = document.getElementById("band").checked;
+  const margin = W * 0.05, maxW = W - margin * 2;
+
+  // 从大到小尝试字号（对应 memebuddy.py 的 shrink loop）
+  let size, font, lines, lineH, blockH;
+  for (size = Math.max(18, Math.floor(W / 8 * scale)); size > 11; size -= 2) {
+    font = `${size}px "Microsoft YaHei", "PingFang SC", sans-serif`;
+    ctx.font = font;
+    lines = [];
+    for (const seg of raw) lines.push(...wrapLine(seg, font, maxW));
+    lineH = size + Math.floor(size * 0.35);
+    blockH = lineH * lines.length;
+    const fits = lines.every(l => ctx.measureText(l).width <= maxW);
+    if (fits && blockH <= H * 0.45) break;
+  }
+  ctx.font = font;
+  const stroke = Math.max(2, Math.floor(size / 14));
+
+  let y0 = position === "top" ? margin
+        : position === "center" ? (H - blockH) / 2
+        : H - margin - blockH;
+
+  if (band) {
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    const pad = size * 0.35;
+    ctx.fillRect(0, Math.max(0, y0 - pad), W, Math.min(H, blockH + pad * 2) - Math.max(0, y0 - pad));
+  }
+
+  ctx.lineJoin = "round";
+  ctx.textBaseline = "top";
+  for (const line of lines) {
+    const x = (W - ctx.measureText(line).width) / 2;
+    ctx.strokeStyle = "#000"; ctx.lineWidth = stroke * 2;
+    ctx.strokeText(line, x, y0);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(line, x, y0);
+    y0 += lineH;
+  }
+  drawWatermark();
+}
+function drawWatermark() {
+  ctx.font = `${Math.max(14, cv.width * 0.022)}px sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+  const t = "MemeBuddy 生成";
+  const x = cv.width - ctx.measureText(t).width - 12, y = cv.height - 30;
+  ctx.strokeText(t, x, y); ctx.fillText(t, x, y);
+}
+
+// ---------- 交互 ----------
+const thumbs = document.getElementById("thumbs");
+BASES.forEach((b, i) => {
+  const d = document.createElement("div");
+  d.className = "thumb" + (i === 0 ? " sel" : "");
+  d.innerHTML = `<img src="${b.src}" alt="${b.tag}"><span class="tag">${b.tag}</span>`;
+  d.onclick = () => {
+    document.querySelectorAll(".thumb").forEach(t => t.classList.remove("sel"));
+    d.classList.add("sel"); loadBase(b.src, b.tag);
+  };
+  thumbs.appendChild(d);
+});
+
+document.getElementById("file").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  document.querySelectorAll(".thumb").forEach(t => t.classList.remove("sel"));
+  loadBase(url, f.name);
+});
+
+document.getElementById("caption").addEventListener("input", render);
+document.getElementById("position").addEventListener("change", render);
+document.getElementById("band").addEventListener("change", render);
+document.getElementById("scale").addEventListener("input", e => {
+  document.getElementById("scaleVal").textContent = e.target.value + "%"; render();
+});
+document.getElementById("inspire").addEventListener("click", () => {
+  const mood = MOODS[Math.floor(Math.random() * MOODS.length)];
+  document.getElementById("caption").value =
+    mood[Math.floor(Math.random() * mood.length)];
+  render();
+});
+document.getElementById("download").addEventListener("click", () => {
+  cv.toBlob(b => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(b);
+    a.download = "memebuddy_" + Date.now() + ".png";
+    a.click();
+  });
+});
+
+// init
+loadBase(BASES[0].src, BASES[0].tag);
+</script>
+</body>
+</html>
