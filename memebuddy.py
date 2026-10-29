@@ -137,27 +137,37 @@ def _wrap_line(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[
     return lines
 
 
-def render_caption(image_path: str | Path, text: str, out_path: str | Path,
-                   position: str = "bottom", band: bool = False,
-                   margin_ratio: float = 0.05, font_scale: float = 1.0) -> Path:
-    """把配文渲染到底图上。
+def render_to_image(img: Image.Image, text: str, position: str = "bottom",
+                    band: bool = False, margin_ratio: float = 0.05,
+                    font_scale: float = 1.0, offset_y: int = 0,
+                    scale_img: float = 1.0, shift: tuple[int, int] = (0, 0)) -> Image.Image:
+    """把配文渲染到 PIL 图像上（返回新图像，不落盘）。
 
-    - 多行用 | 分隔（如 "上半句|下半句"）
-    - 白字黑描边（经典表情包样式），自动缩放字号避免溢出
-    - position: top / bottom / center
-    - band: 在文字区加半透明黑底条，提高可读性
-    - font_scale: 字号缩放系数（1.0 为默认大字，0.5-0.7 适合人像照片避让脸部）
+    offset_y: 文字整体垂直偏移（动图逐帧弹跳用）
+    scale_img: 底图缩放系数（>1 放大后居中裁回原尺寸，动图缩放脉冲用）
+    shift: 底图平移像素（动图抖动用）
     """
-    src = Image.open(image_path).convert("RGB")
+    src = img.convert("RGB")
     W, H = src.size
-    draw = ImageDraw.Draw(src)
 
+    if scale_img != 1.0 or shift != (0, 0):
+        if scale_img != 1.0:
+            sw, sh = int(W * scale_img), int(H * scale_img)
+            src = src.resize((sw, sh), Image.LANCZOS)
+            left = max(0, (sw - W) // 2)
+            top = max(0, (sh - H) // 2)
+            src = src.crop((left, top, left + W, top + H))
+        if shift != (0, 0):
+            src = src.transform((W, H), Image.AFFINE,
+                                (1, 0, -shift[0], 0, 1, -shift[1]),
+                                resample=Image.BILINEAR, fillcolor=(0, 0, 0))
+
+    draw = ImageDraw.Draw(src)
     raw_lines = [seg.strip() for seg in text.split("|") if seg.strip()]
     if not raw_lines:
-        raise ValueError("配文为空")
+        return src
 
     max_width = int(W * (1 - 2 * margin_ratio))
-    # 从大到小尝试字号，直到整块文字放得下；font_scale 可整体缩小避让画面主体
     for size in range(max(18, int(W // 8 * font_scale)), 11, -2):
         font = pick_font(size)
         stroke = max(2, size // 14)
@@ -175,7 +185,7 @@ def render_caption(image_path: str | Path, text: str, out_path: str | Path,
 
     y0 = {"top": int(H * margin_ratio),
           "bottom": H - int(H * margin_ratio) - block_h,
-          "center": (H - block_h) // 2}[position]
+          "center": (H - block_h) // 2}[position] + offset_y
 
     if band:
         overlay = Image.new("RGBA", src.size, (0, 0, 0, 0))
@@ -192,10 +202,65 @@ def render_caption(image_path: str | Path, text: str, out_path: str | Path,
         draw.text((x, y0), line, font=font, fill=(255, 255, 255),
                   stroke_width=stroke, stroke_fill=(0, 0, 0))
         y0 += line_h
+    return src
+
+
+def render_caption(image_path: str | Path, text: str, out_path: str | Path,
+                   position: str = "bottom", band: bool = False,
+                   margin_ratio: float = 0.05, font_scale: float = 1.0) -> Path:
+    """把配文渲染到底图并保存（静态成品，动图请用 animate）。"""
+    src = Image.open(image_path)
+    out = render_to_image(src, text, position=position, band=band,
+                          margin_ratio=margin_ratio, font_scale=font_scale)
+    out_p = Path(out_path)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    out.save(out_p)
+    return out_p
+
+
+# ---------------------------------------------------------------- 动图（GIF）
+
+def animate_gif(image_path: str | Path, text: str, out_path: str | Path,
+                effect: str = "bounce", frames: int = 16, fps: int = 12,
+                position: str = "bottom", band: bool = False,
+                font_scale: float = 0.62, max_width: int = 480,
+                loop: int = 0) -> Path:
+    """生成动图 GIF（纯本地逐帧渲染，零积分）。
+
+    effect: bounce(文字弹跳) / shake(整图抖动) / zoom(缩放脉冲)
+    frames/fps: 帧数与帧率；max_width: 降采样宽度（控制文件体积）
+    """
+    import math
+    src = Image.open(image_path).convert("RGB")
+    if src.width > max_width:
+        ratio = max_width / src.width
+        src = src.resize((max_width, int(src.height * ratio)), Image.LANCZOS)
+
+    frame_imgs = []
+    for i in range(frames):
+        t = i / frames * 2 * math.pi
+        if effect == "bounce":
+            dy = int(-abs(math.sin(t)) * src.height * 0.012)
+            f = render_to_image(src, text, position=position, band=band,
+                                font_scale=font_scale, offset_y=dy)
+        elif effect == "shake":
+            dx = int(math.sin(t * 2) * src.width * 0.008)
+            dy = int(math.cos(t * 3) * src.height * 0.006)
+            f = render_to_image(src, text, position=position, band=band,
+                                font_scale=font_scale,
+                                shift=(dx, dy))
+        elif effect == "zoom":
+            z = 1.0 + 0.035 * (0.5 - 0.5 * math.cos(t))
+            f = render_to_image(src, text, position=position, band=band,
+                                font_scale=font_scale, scale_img=z)
+        else:
+            raise ValueError(f"未知效果: {effect}")
+        frame_imgs.append(f)
 
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    src.save(out)
+    frame_imgs[0].save(out, save_all=True, append_images=frame_imgs[1:],
+                       duration=int(1000 / fps), loop=loop, optimize=True)
     return out
 
 # ---------------------------------------------------------------- 命令行入口
@@ -232,6 +297,19 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--font-scale", type=float, default=1.0,
                     help="字号缩放系数（默认 1.0；人像照片建议 0.5-0.7 避让脸部）")
 
+    pa = sub.add_parser("animate", help="生成动图 GIF（纯本地逐帧动画，零积分）")
+    pa.add_argument("image", help="底图路径")
+    pa.add_argument("--text", required=True, help="配文，多行用 | 分隔")
+    pa.add_argument("--out", required=True, help="输出 GIF 路径")
+    pa.add_argument("--effect", default="bounce", choices=["bounce", "shake", "zoom"],
+                    help="动画效果：bounce=文字弹跳 / shake=整图抖动 / zoom=缩放脉冲")
+    pa.add_argument("--frames", type=int, default=16, help="帧数（默认 16）")
+    pa.add_argument("--fps", type=int, default=12, help="帧率（默认 12）")
+    pa.add_argument("--position", default="bottom", choices=["top", "bottom", "center"])
+    pa.add_argument("--band", action="store_true", help="文字区加半透明黑底条")
+    pa.add_argument("--font-scale", type=float, default=0.62, help="字号缩放系数")
+    pa.add_argument("--max-width", type=int, default=480, help="降采样宽度（控制 GIF 体积）")
+
     args = p.parse_args(argv)
 
     if args.cmd == "idea":
@@ -252,6 +330,15 @@ def main(argv: list[str] | None = None) -> int:
                              position=args.position, band=args.band,
                              font_scale=args.font_scale)
         print(f"已生成: {out}")
+        return 0
+
+    if args.cmd == "animate":
+        out = animate_gif(args.image, args.text, args.out,
+                          effect=args.effect, frames=args.frames, fps=args.fps,
+                          position=args.position, band=args.band,
+                          font_scale=args.font_scale, max_width=args.max_width)
+        size_kb = out.stat().st_size // 1024
+        print(f"已生成: {out}（{size_kb} KB）")
         return 0
     return 1
 

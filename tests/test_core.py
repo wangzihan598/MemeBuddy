@@ -9,8 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from memebuddy import gen_ideas, match_mood, load_library, extract_theme, render_caption
-from PIL import Image
+from memebuddy import gen_ideas, match_mood, load_library, extract_theme, render_caption, animate_gif
+from PIL import Image, ImageDraw
 
 
 def make_test_image(path, size=(800, 600), color=(120, 180, 220)):
@@ -100,6 +100,52 @@ class TestRender(unittest.TestCase):
         out = Path(self.tmp.name) / "out4.png"
         render_caption(self.base, "这是一条非常长的配文" * 6, out)
         self.assertTrue(out.exists())
+
+
+class TestAnimate(unittest.TestCase):
+    """动图（GIF）功能评测用例"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = str(Path(self.tmp.name) / "base.png")
+        # 带图案的底图（纯色图缩放后无像素差异，不适合测 zoom）
+        img = Image.new("RGB", (800, 600), (120, 180, 220))
+        d = ImageDraw.Draw(img)
+        d.ellipse([100, 100, 700, 500], fill=(250, 190, 90))
+        d.rectangle([300, 200, 500, 400], fill=(90, 140, 90))
+        img.save(self.base)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_animate_creates_multiframe_gif(self):
+        """GIF 生成：多帧、可打开、已降采样"""
+        out = Path(self.tmp.name) / "out.gif"
+        result = animate_gif(self.base, "无语子", out,
+                             effect="bounce", frames=8, fps=10)
+        self.assertTrue(result.exists())
+        im = Image.open(result)
+        self.assertGreaterEqual(getattr(im, "n_frames", 1), 2, "应为多帧 GIF")
+        self.assertLessEqual(im.size[0], 480, "应按 max_width 降采样")
+
+    def test_animate_three_effects(self):
+        """三种效果（bounce/shake/zoom）均产出多个独立画面"""
+        from PIL import ImageSequence
+        for effect in ("bounce", "shake", "zoom"):
+            out = Path(self.tmp.name) / f"{effect}.gif"
+            animate_gif(self.base, "已读不回", out, effect=effect,
+                        frames=6, fps=10)
+            im = Image.open(out)
+            frames = [f.convert("RGB").tobytes()
+                      for f in ImageSequence.Iterator(im)]
+            self.assertGreaterEqual(im.n_frames, 2, f"{effect} 应为多帧")
+            self.assertGreaterEqual(len(set(frames)), 2,
+                                    f"{effect} 应有画面变化")
+
+    def test_animate_unknown_effect_raises(self):
+        with self.assertRaises(ValueError):
+            animate_gif(self.base, "x", Path(self.tmp.name) / "bad.gif",
+                        effect="spin")
 
 
 class TestLibrary(unittest.TestCase):
